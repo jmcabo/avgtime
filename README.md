@@ -65,11 +65,18 @@ improved the running time of your program with just one run?
 
 That depends on how big the time difference is. And usually, we
 optimize things one step at a time, making small improvements.
-This means that you must run your program many times. Which
+This all means that we must run the program many times to distinguish
+our little improvements from background noise. Which
 now means that the running time of your program has become
 a random variable (in the probability theory sense), of which
-you must take samples to reach a conclusion about its 
+we must take samples to reach a conclusion about its 
 probability distribution.
+
+_Even when doing dramatic optimizations, as opposed to little ones,
+ie: reducing time complexity by using better algorithms,
+we must make sure that it was worthy and keep constant 
+times in check._
+
 
 To really know whether you made an improvement on running time,
 you must take into account the standard deviation (or any other
