@@ -75,9 +75,9 @@ To really know whether you made an improvement on running time,
 you must take into account the standard deviation (or any other
 confidence interval), and at least make sure that 
 the `Average +/- StdDev` intervals don't overlap.
-   Or, if you are too lazy, just make sure that the minimum time
-of the 'slow' version, is better than the maximum of the 'fast' 
-version under test.
+   Or, if you are too lazy, **just make sure that the maximum time
+of the 'fast' version, is better than the minimum of the 'slow' 
+version under test.**
 
 See, one is not measuring the running time of a program. You are
 actually measuring the interval of running times where it 
