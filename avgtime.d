@@ -74,21 +74,23 @@ int main(string[] args) {
 }
 
 void showUsage() {
-    writeln("avgtime - Runs a command repeatedly and shows time statistics."
-          ~ "\nUsage: avgtime [--quiet|-q] [--repetitions=N|-r N] <command> [<arguments>]"
-          ~ "\nExamples: "
-          ~ "\n    avgtime ls -lR"
-          ~ "\n    avgtime -r 10 ls -lR"
-          ~ "\n    avgtime --repetitions=10 --quiet ls -lR"
-          ~ "\n    avgtime --repetitions=10 sleep 0.1"
-          ~ "\n    avgtime -q -r10 ls -lR"
+    writeln(
+`avgtime - Runs a command repeatedly and shows time statistics.
+Usage: avgtime [--quiet|-q] [--repetitions=N|-r N] <command> [<arguments>]
+Examples: 
+    avgtime ls -lR
+    avgtime -r 10 ls -lR
+    avgtime --repetitions=10 --quiet ls -lR
+    avgtime --repetitions=10 sleep 0.1
+    avgtime -q -r10 ls -lR`
     );
 }
 
 Duration run(string prog, string[] progArgs, bool quiet) {
     SysTime start = Clock.currTime();
 
-    //Must use fork and execvp, because shell() has some overhead.
+    //Using fork() and execvp(). system() and shell() would 
+    //invoke '/bin/sh' first which wouldn't be so direct.
     pid_t pid = fork();
     if (pid == 0) {
         if (quiet) {
