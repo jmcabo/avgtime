@@ -17,17 +17,15 @@ module avgtime;
 
 import std.stdio;
 import std.process;
-import std.datetime;
 import core.time;
 import core.sys.posix.unistd;
 import core.sys.posix.sys.wait;
-import core.thread;
 import std.getopt;
 import std.algorithm: sort;
 import std.math: sqrt;
 
 
-Duration[] durations;
+TickDuration[] durations;
 
 int main(string[] args) {
     if (args.length == 1) {
@@ -63,7 +61,7 @@ int main(string[] args) {
     string prog = args[1];
     string[] progArgs = args[1..$];
     for (int i=0; i < repetitions; ++i) {
-        Duration duration = run(prog, progArgs, quiet);
+        TickDuration duration = run(prog, progArgs, quiet);
         durations ~= duration;
     }
 
@@ -86,8 +84,8 @@ Examples:
     );
 }
 
-Duration run(string prog, string[] progArgs, bool quiet) {
-    SysTime start = Clock.currTime();
+TickDuration run(string prog, string[] progArgs, bool quiet) {
+    TickDuration start = TickDuration.currSystemTick();
 
     //Using fork() and execvp(). system() and shell() would 
     //invoke '/bin/sh' first which wouldn't be so direct.
@@ -105,7 +103,7 @@ Duration run(string prog, string[] progArgs, bool quiet) {
     int status;
     waitpid(pid, &status, 0);
 
-    SysTime end = Clock.currTime();
+    TickDuration end = TickDuration.currSystemTick();
     return end - start;
 }
 
@@ -119,18 +117,18 @@ void showStats() {
     }
     if (N == 1) {
         writeln("\n------------------------");
-        writeln("Total time (ms): ", durations[0].total!"usecs"() / 1000.0);
+        writeln("Total time (ms): ", durations[0].usecs() / 1000.0);
         return;
     }
 
     //Get sum, average and stdDev:
     real sum = 0;
     real sumSq = 0;
-    real min = durations[0].total!"usecs"();
-    real max = durations[0].total!"usecs"();
+    real min = durations[0].usecs();
+    real max = durations[0].usecs();
     real[] durationsUsecs;
-    foreach (Duration duration; durations) {
-        real usecs = duration.total!"usecs"();
+    foreach (TickDuration duration; durations) {
+        real usecs = duration.usecs();
         sum += usecs;
         sumSq += usecs * usecs;
         durationsUsecs ~= usecs;
