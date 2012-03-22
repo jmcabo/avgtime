@@ -10,6 +10,12 @@ median, average, and standard deviation.
 Pass `-q` to make the program under test silent (stdout and stderr 
 piped to /dev/null).
 
+Pass `-d` to discard the first run. If -d is passed, there is one extra
+repetition which is discarded.
+
+Pass `-p` to print the sorted times in milliseconds.
+
+
 How to use
 ==========
 

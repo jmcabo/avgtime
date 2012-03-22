@@ -3,7 +3,7 @@
  *
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Juan Manuel Cabo
- * Version:   0.1
+ * Version:   0.2
  * Source:    avgtime.d
  * Last update: 2012-03-21
  */
@@ -15,13 +15,11 @@
 
 module avgtime;
 
-import std.stdio;
-import std.process;
-import core.time;
+import std.stdio, std.process, std.getopt, core.time, std.string;
 import core.sys.posix.unistd;
 import core.sys.posix.sys.wait;
-import std.getopt;
-import std.algorithm: sort;
+import std.algorithm: sort, replace, map;
+import std.array: array;
 import std.math: sqrt;
 
 
@@ -35,12 +33,16 @@ int main(string[] args) {
 
     //Parse options:
     int repetitions = 1;
+    bool discardFirst = false;
     bool quiet = false;
+    bool printTimes = false;
     try {
         getopt(args,
             std.getopt.config.caseSensitive,
             std.getopt.config.noPassThrough,
             std.getopt.config.stopOnFirstNonOption,
+            "discardfirst|d", &discardFirst,
+            "printtimes|p", &printTimes,
             "repetitions|r", &repetitions,
             "quiet|q", &quiet);
     } catch (Exception ex) {
@@ -56,17 +58,22 @@ int main(string[] args) {
     if (repetitions <= 1) {
         repetitions = 1;
     }
+    if (discardFirst) {
+        ++repetitions;
+    }
 
     //Run the program, collecting time info.
     string prog = args[1];
     string[] progArgs = args[1..$];
     for (int i=0; i < repetitions; ++i) {
         TickDuration duration = run(prog, progArgs, quiet);
-        durations ~= duration;
+        if (!discardFirst || i != 0) {
+            durations ~= duration;
+        }
     }
 
     //Compute and show stats:
-    showStats();
+    showStats(printTimes);
 
     return 0;
 }
@@ -74,13 +81,13 @@ int main(string[] args) {
 void showUsage() {
     writeln(
 `avgtime - Runs a command repeatedly and shows time statistics.
-Usage: avgtime [--quiet|-q] [--repetitions=N|-r N] <command> [<arguments>]
+Usage: avgtime [--printtimes|-p] -[--discardfirst|-d] [--quiet|-q] [--repetitions=N|-r N] <command> [<arguments>]
 Examples: 
     avgtime ls -lR
     avgtime -r 10 ls -lR
     avgtime --repetitions=10 --quiet ls -lR
     avgtime --repetitions=10 sleep 0.1
-    avgtime -q -r10 ls -lR`
+    avgtime -d -q -r10  ls -lR`
     );
 }
 
@@ -108,7 +115,7 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
 }
 
 
-void showStats() {
+void showStats(bool printTimes) {
     long N = durations.length;
 
     if (N == 0) {
@@ -138,7 +145,7 @@ void showStats() {
     real avg = sum / N;
     real stdDevFast = sqrt(sumSq/N - avg * avg);
 
-    //Sort and get media:
+    //Sort and get median:
     sort(durationsUsecs);
     real median = 0;
     if ((durationsUsecs.length % 2) == 0) {
@@ -158,6 +165,14 @@ void showStats() {
     writeln("Std dev.       : ", stdDevFast / 1000.0);
     writeln("Minimum        : ", min / 1000.0);
     writeln("Maximum        : ", max / 1000.0);
+
+    if (printTimes) {
+        string allTimes = format(array(map!("a / 1000.0")(durationsUsecs)));
+        allTimes = wrap(replace(allTimes, ",", ", "), 80, "", "    ");
+
+        string breakLineIfWrapped = (allTimes.indexOf('\n'))? "\n    " : "";
+        writeln("Sorted times   : ", breakLineIfWrapped, allTimes);
+    }
 }
 
 
