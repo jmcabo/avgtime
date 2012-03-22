@@ -86,7 +86,7 @@ the `Average +/- StdDev` intervals don't overlap.
 of the 'fast' version, is better than the minimum of the 'slow' 
 version under test.**
 
-See, one is not measuring the running time of a program. You are
+See, one is not measuring the running time of a program. One is
 actually measuring the interval of running times where it 
 is likely to always stay... its probability distribution.
 
