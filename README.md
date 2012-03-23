@@ -48,7 +48,13 @@ Displayed times are in milliseconds.
 
 Run avgtime without arguments to see more usage help.
 
-Don't forget to checkout the nice histogram:
+Don't forget to checkout the *nice histogram*.
+
+*Note* that the following histogram shows two peaks because
+of the CPU speed switching that laptops do. Some laptops
+will often switch to low speed even in "High Performance" mode
+and plugged to the wall. Forcing to high speed (always on)
+eliminates the second peak (how to do that is beyond the scope).
 
         avgtime -q -h -r1000   ls /etc -lR
 
@@ -90,6 +96,12 @@ Don't forget to checkout the nice histogram:
               109:     6  #
               110:     1  
               111:     2  
+
+You can see the importance of the histogram now, and of
+statistics such as the 'sample mode', 'median', and
+standard deviation of the sample. All these together might
+help *visualize and quantify* performance effects that you 
+wouldn't see by timing your program just once.
 
 
 How to install
@@ -143,7 +155,8 @@ version under test.**
 
 See, one is not measuring the running time of a program. One is
 actually measuring the interval of running times where it 
-is likely to always stay... its probability distribution.
+is likely to always stay... to know more about its probability 
+distribution.
 
 
 _(Look for 'Hypothesis Testing' and 'Confidence Intervals' on the web 
