@@ -15,6 +15,7 @@ repetition which is discarded.
 
 Pass `-p` to print the sorted times in milliseconds.
 
+Pass `-h` to print a very nice histogram.
 
 How to use
 ==========
@@ -27,20 +28,64 @@ to run <your_command> a thousand times.
 
 For instance:
 
-        avgtime -r 10 -q ls -lR /etc
+        /avgtime -q -r30  ls -lR /etc
 
         ------------------------
-        Total time (ms): 933.742
-        Repetitions    : 10
-        Median time    : 90.505
-        Avg time       : 93.3742
-        Std dev.       : 4.66808
-        Minimum        : 88.732
-        Maximum        : 101.225
+        Total time (ms): 2914.28
+        Repetitions    : 30
+        Sample mode    : 99 (6 ocurrences)
+        Median time    : 98.01
+        Avg time       : 97.1426
+        Std dev.       : 4.52638
+        Minimum        : 89.625
+        Maximum        : 106.68
+        95% conf.int.  : [95.5229, 98.7623]  e = 1.61972
+        99% conf.int.  : [95.0139, 99.2712]  e = 2.12867
 
 Displayed times are in milliseconds.
 
 Run avgtime without arguments to see more usage help.
+
+Don't forget to checkout the nice histogram:
+
+        avgtime -q -h -r1000   ls /etc -lR
+
+        ------------------------
+        Total time (ms): 97920.7
+        Repetitions    : 1000
+        Sample mode    : 90 (137 ocurrences)
+        Median time    : 99.0305
+        Avg time       : 97.9207
+        Std dev.       : 5.26182
+        Minimum        : 89.081
+        Maximum        : 111.864
+        95% conf.int.  : [97.5945, 98.2468]  e = 0.326125
+        99% conf.int.  : [97.4921, 98.3493]  e = 0.428601
+        Histogram      :
+            msecs: count  normalized bar
+               89:    45  #############
+               90:   137  ########################################
+               91:    58  ################
+               92:    43  ############
+               93:    16  ####
+               94:     8  ##
+               95:    33  #########
+               96:    44  ############
+               97:    59  #################
+               98:    53  ###############
+               99:    76  ######################
+              100:    84  ########################
+              101:    87  #########################
+              102:    86  #########################
+              103:    77  ######################
+              104:    35  ##########
+              105:    22  ######
+              106:    12  ###
+              107:    10  ##
+              108:     6  #
+              109:     6  #
+              110:     1  
+              111:     2  
 
 
 How to install

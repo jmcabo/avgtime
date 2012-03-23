@@ -15,15 +15,13 @@
 
 module avgtime;
 
-import std.stdio, std.process, std.getopt, core.time, std.string;
+import std.stdio, std.process, std.getopt, core.time, std.string, std.conv;
 import core.sys.posix.unistd;
 import core.sys.posix.sys.wait;
-import std.algorithm: sort, replace, map;
-import std.array: array;
-import std.math: sqrt;
+import std.algorithm: sort, replace, map, max;
+import std.array: array, replicate;
+import std.math: sqrt, log10;
 
-
-TickDuration[] durations;
 
 int main(string[] args) {
     if (args.length == 1) {
@@ -36,6 +34,7 @@ int main(string[] args) {
     bool discardFirst = false;
     bool quiet = false;
     bool printTimes = false;
+    bool printHistogram = false;
     try {
         getopt(args,
             std.getopt.config.caseSensitive,
@@ -43,6 +42,7 @@ int main(string[] args) {
             std.getopt.config.stopOnFirstNonOption,
             "discardfirst|d", &discardFirst,
             "printtimes|p", &printTimes,
+            "printhistogram|h", &printHistogram,
             "repetitions|r", &repetitions,
             "quiet|q", &quiet);
     } catch (Exception ex) {
@@ -65,6 +65,7 @@ int main(string[] args) {
     //Run the program, collecting time info.
     string prog = args[1];
     string[] progArgs = args[1..$];
+    TickDuration[] durations;
     for (int i=0; i < repetitions; ++i) {
         TickDuration duration = run(prog, progArgs, quiet);
         if (!discardFirst || i != 0) {
@@ -73,7 +74,7 @@ int main(string[] args) {
     }
 
     //Compute and show stats:
-    showStats(printTimes);
+    showStats(durations, printTimes, printHistogram);
 
     return 0;
 }
@@ -81,14 +82,38 @@ int main(string[] args) {
 void showUsage() {
     writeln(
 `avgtime - Runs a command repeatedly and shows time statistics.
-Usage: avgtime [--printtimes|-p] -[--discardfirst|-d] [--quiet|-q] [--repetitions=N|-r N] <command> [<arguments>]
+Usage: avgtime [OPTIONS] <command> [<arguments>]
+
+  -r, --repetitions=N    Repeat <command> N times
+  -q, --quiet            Suppress the command's stdout and stderr
+                         piping them to /dev/null.
+  -h, --printhistogram   Print a nice histogram, grouping times by
+                         most significant digits.
+  -p, --printtimes       Print all measurements in milliseconds
+  -d, --discardfirst     Performs an extra repetition, and then discards 
+                         it. It's like a warmup to prevent first 
+                         run outlier.
+
 Examples: 
-    avgtime ls -lR
-    avgtime -r 10 ls -lR
-    avgtime --repetitions=10 --quiet ls -lR
-    avgtime --repetitions=10 sleep 0.1
-    avgtime -d -q -r10  ls -lR`
-    );
+
+    avgtime -q -r30      ls -lR
+    avgtime -h -q -r100  ls *
+
+Notes:
+
+    * The 'sample mode' is the most frequent rounded measurement.
+
+    * The 'median' is the timing in the middle of the sorted list of timings.
+
+    * If the 95% confidence interval's of the timings of two programs 
+      don't overlap, then you can be 95% confident that one is 
+      faster than the other. Idem for the 99% one. 
+      This assumes a 'normal distribution', and for the assumption 
+      to work, N must be at least 30. The more repetitions, the better.
+
+    * There is a small irreductible overhead in the order of 1 or 2 ms
+      depending on your computer, inherent to forking and process loading.`
+);
 }
 
 TickDuration run(string prog, string[] progArgs, bool quiet) {
@@ -115,7 +140,7 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
 }
 
 
-void showStats(bool printTimes) {
+void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     long N = durations.length;
 
     if (N == 0) {
@@ -157,15 +182,95 @@ void showStats(bool printTimes) {
     }
 
 
+    //To build a histogram and get the mode, we need to group 
+    //many values into a few bins. So we'll zero out the least 
+    //significant digits. Spliting into X subintervals isn't as 
+    //nice as this.
+    int roundingQuotient;
+    if (min > 100_000) {
+        //Round 1234.5 to 1230.0 milliseconds.
+        roundingQuotient = 10_000;
+    } else if (min > 10_000) {
+        //Round 123.45 to 123.00 milliseconds.
+        roundingQuotient = 1000;
+    } else {
+        //Round 12.345 to 12.300 milliseconds.
+        roundingQuotient = 100;
+    }
+
+    //Build frequencies and find sample mode at the same time:
+    int[int] frequencies;
+    real mode;
+    int maxFreq = 0;
+    foreach (real usecs; durationsUsecs) {
+        int roundedTime = cast(int)(usecs / roundingQuotient);
+        int freq = frequencies.get(roundedTime, 0);
+        ++freq;
+        frequencies[roundedTime] = freq;
+        //Get the biggest of the modes, if there is more than one:
+        if (freq >= maxFreq) {
+            maxFreq = freq;
+            mode = roundedTime * roundingQuotient / 1000.0;
+        }
+    }
+
+    //Confidence intervals assuming a normal (gaussian) distribution:
+    immutable real z0_005 = 2.57582930355;
+    immutable real z0_025 = 1.95996398454;
+    real error99 = z0_005 * stdDevFast / sqrt(cast(real)N);
+    real error95 = z0_025 * stdDevFast / sqrt(cast(real)N);
+
     writeln("\n------------------------");
     writeln("Total time (ms): ", sum / 1000.0);
     writeln("Repetitions    : ", N);
+    writeln("Sample mode    : ", mode, " (", maxFreq, " ocurrences)");
     writeln("Median time    : ", median / 1000.0);
     writeln("Avg time       : ", avg / 1000.0);
     writeln("Std dev.       : ", stdDevFast / 1000.0);
     writeln("Minimum        : ", min / 1000.0);
     writeln("Maximum        : ", max / 1000.0);
+    writeln("95% conf.int.  : [", (avg - error95) / 1000.0, ", ", 
+            (avg + error95) / 1000.0, "]  e = ", error95 / 1000.0);
+    writeln("99% conf.int.  : [", (avg - error99) / 1000.0, ", ", 
+            (avg + error99) / 1000.0, "]  e = ", error99 / 1000.0);
 
+
+    //Print histogram:
+    if (printHistogram) {
+        //Normalize histogram. 
+        //maxFreq is 100% (1.0), everything else is proportional.
+        float[int] histogram;
+        foreach (k,v; frequencies) {
+            histogram[k] = v / cast(float)maxFreq;
+        }
+
+        //Sort the bins to print them in order:
+        int[] histogramKeys = array(frequencies.keys());
+        sort(histogramKeys);
+
+        //Fix the number of digits to print after the decimal point:
+        int precision = 3 - cast(int) log10(roundingQuotient);
+        precision = std.algorithm.max(0, precision);
+        string timeFormatStr = "%5." ~ to!string(precision) ~ "f";
+
+        writeln("Histogram      :");
+        writeln("    msecs: count  normalized bar");
+        foreach(int roundedTime; histogramKeys) {
+            //"Un-round" to get the milliseconds:
+            real msecs = roundedTime * roundingQuotient / 1000.0;
+            string msecsStr = format(timeFormatStr, msecs);
+
+            //Bar proportional to the frequency:
+            immutable LONGEST_BAR_CHARS = 40;
+            string bars = replicate("#", 
+                    cast(size_t)(histogram[roundedTime] * LONGEST_BAR_CHARS));
+
+            writefln("    %s: %5.d  %s", msecsStr, 
+                    frequencies[roundedTime], bars);
+        }
+    }
+
+    //Print all measurements, sorted:
     if (printTimes) {
         string allTimes = format(array(map!("a / 1000.0")(durationsUsecs)));
         allTimes = wrap(replace(allTimes, ",", ", "), 80, "", "    ");
