@@ -3,9 +3,9 @@
  *
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Juan Manuel Cabo
- * Version:   0.2
+ * Version:   0.3
  * Source:    avgtime.d
- * Last update: 2012-03-21
+ * Last update: 2012-03-23
  */
 /*          Copyright Juan Manuel Cabo 2012.
  * Distributed under the Boost Software License, Version 1.0.
