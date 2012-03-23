@@ -3,7 +3,7 @@
  *
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Juan Manuel Cabo
- * Version:   0.3
+ * Version:   0.4
  * Source:    avgtime.d
  * Last update: 2012-03-23
  */
@@ -106,8 +106,8 @@ Notes:
     * The 'median' is the timing in the middle of the sorted list of timings.
 
     * If the 95% confidence interval's of the timings of two programs 
-      don't overlap, then you can be 95% confident that one is 
-      faster than the other. Idem for the 99% one. 
+      don't overlap, then you can be confident that one is faster 
+      than the other.
       This assumes a 'normal distribution', and for the assumption 
       to work, N must be at least 30. The more repetitions, the better.
 
@@ -217,8 +217,10 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     //Confidence intervals assuming a normal (gaussian) distribution:
     immutable real z0_005 = 2.57582930355;
     immutable real z0_025 = 1.95996398454;
-    real error99 = z0_005 * stdDevFast / sqrt(cast(real)N);
-    real error95 = z0_025 * stdDevFast / sqrt(cast(real)N);
+    real muError99 = z0_005 * stdDevFast / sqrt(cast(real)N);
+    real muError95 = z0_025 * stdDevFast / sqrt(cast(real)N);
+    real error99 = z0_005 * stdDevFast;
+    real error95 = z0_025 * stdDevFast;
 
     writeln("\n------------------------");
     writeln("Total time (ms): ", sum / 1000.0);
@@ -229,10 +231,10 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     writeln("Std dev.       : ", stdDevFast / 1000.0);
     writeln("Minimum        : ", min / 1000.0);
     writeln("Maximum        : ", max / 1000.0);
-    writeln("95% conf.int.  : [", (avg - error95) / 1000.0, ", ", 
-            (avg + error95) / 1000.0, "]  e = ", error95 / 1000.0);
-    writeln("99% conf.int.  : [", (avg - error99) / 1000.0, ", ", 
-            (avg + error99) / 1000.0, "]  e = ", error99 / 1000.0);
+    writeln("95% conf.int.  : [", (avg - error95) / 1000.0, ", ", (avg + error95) / 1000.0, "]  e = ", error95 / 1000.0);
+    writeln("99% conf.int.  : [", (avg - error99) / 1000.0, ", ", (avg + error99) / 1000.0, "]  e = ", error99 / 1000.0);
+    writeln("EstimatedAvg95%: [", (avg - muError95) / 1000.0, ", ", (avg + muError95) / 1000.0, "]  e = ", muError95 / 1000.0);
+    writeln("EstimatedAvg99%: [", (avg - muError99) / 1000.0, ", ", (avg + muError99) / 1000.0, "]  e = ", muError99 / 1000.0);
 
 
     //Print histogram:

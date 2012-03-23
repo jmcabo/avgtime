@@ -39,8 +39,10 @@ For instance:
         Std dev.       : 4.52638
         Minimum        : 89.625
         Maximum        : 106.68
-        95% conf.int.  : [95.5229, 98.7623]  e = 1.61972
-        99% conf.int.  : [95.0139, 99.2712]  e = 2.12867
+        95% conf.int.  : [88.2711, 106.014]  e = 8.87154
+        99% conf.int.  : [85.4834, 108.802]  e = 11.6592
+        EstimatedAvg95%: [95.5229, 98.7623]  e = 1.61972
+        EstimatedAvg99%: [95.0139, 99.2712]  e = 2.12867
 
 Displayed times are in milliseconds.
 
@@ -59,8 +61,10 @@ Don't forget to checkout the nice histogram:
         Std dev.       : 5.26182
         Minimum        : 89.081
         Maximum        : 111.864
-        95% conf.int.  : [97.5945, 98.2468]  e = 0.326125
-        99% conf.int.  : [97.4921, 98.3493]  e = 0.428601
+        95% conf.int.  : [87.6077, 108.234]  e = 10.313
+        99% conf.int.  : [84.3672, 111.474]  e = 13.5535
+        EstimatedAvg95%: [97.5945, 98.2468]  e = 0.326125
+        EstimatedAvg99%: [97.4921, 98.3493]  e = 0.428601
         Histogram      :
             msecs: count  normalized bar
                89:    45  #############
@@ -125,7 +129,7 @@ probability distribution.
 
 _Even when doing dramatic optimizations, as opposed to little ones,
 ie: reducing time complexity by using better algorithms,
-we must make sure that it was worthy and keep constant 
+we must make sure that it was worth it and keep constant 
 times in check._
 
 
