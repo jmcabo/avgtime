@@ -3,9 +3,9 @@
  *
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Juan Manuel Cabo
- * Version:   0.4
+ * Version:   0.5
  * Source:    avgtime.d
- * Last update: 2012-03-23
+ * Last update: 2012-03-27
  */
 /*          Copyright Juan Manuel Cabo 2012.
  * Distributed under the Boost Software License, Version 1.0.
@@ -16,11 +16,73 @@
 module avgtime;
 
 import std.stdio, std.process, std.getopt, core.time, std.string, std.conv;
-import core.sys.posix.unistd;
-import core.sys.posix.sys.wait;
 import std.algorithm: sort, replace, map, max;
 import std.array: array, replicate;
 import std.math: sqrt, log10;
+
+version(Posix) {
+    import core.sys.posix.unistd;
+    import core.sys.posix.sys.wait;
+} else version(Windows) {
+    import core.sys.windows.windows;
+
+    extern(Windows) {
+        struct STARTUPINFOA {
+            DWORD cb;
+            LPSTR lpReserved;
+            LPSTR lpDesktop;
+            LPSTR lpTitle;
+            DWORD dwX;
+            DWORD dwY;
+            DWORD dwXSize;
+            DWORD dwYSize;
+            DWORD dwXCountChars;
+            DWORD dwYCountChars;
+            DWORD dwFillAttribute;
+            DWORD dwFlags;
+            WORD wShowWindow;
+            WORD cbReserved2;
+            LPBYTE lpReserved2;
+            HANDLE hStdInput;
+            HANDLE hStdOutput;
+            HANDLE hStdError;
+        }
+        alias STARTUPINFOA* LPSTARTUPINFOA;
+
+        immutable DWORD STARTF_USESTDHANDLES = 0x00000100;
+
+        /*
+        struct SECURITY_ATTRIBUTES {
+            DWORD nLength;
+            LPVOID lpSecurityDescriptor;
+            BOOL bInheritHandle;
+        }
+        alias SECURITY_ATTRIBUTES* PSECURITY_ATTRIBUTES;
+        alias SECURITY_ATTRIBUTES* LPSECURITY_ATTRIBUTES;
+        */
+
+        struct PROCESS_INFORMATION {
+            HANDLE hProcess;
+            HANDLE hThread;
+            DWORD dwProcessId;
+            DWORD dwThreadId;
+        }
+        alias PROCESS_INFORMATION* PPROCESS_INFORMATION;
+        alias PROCESS_INFORMATION* LPPROCESS_INFORMATION;
+
+        export BOOL CreateProcessA(LPCSTR lpApplicationName, 
+            LPSTR lpCommandLine,
+            LPSECURITY_ATTRIBUTES lpProcessAttributes, 
+            LPSECURITY_ATTRIBUTES lpThreadAttributes,
+            BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment,
+            LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo,
+            LPPROCESS_INFORMATION lpProcessInformation
+        );
+    }
+
+} else {
+    static assert(false, "Untested platform");
+}
 
 
 int main(string[] args) {
@@ -80,6 +142,16 @@ int main(string[] args) {
 }
 
 void showUsage() {
+    version(Posix) {
+        string examples = `
+    avgtime -q -r30      ls -lR
+    avgtime -h -q -r100  ls *`;
+    } else version(Windows) {
+        string examples = `
+    avgtime -q -r30      cmd /c dir
+    avgtime -h -q -r100  fc /?`;
+    }
+
     writeln(
 `avgtime - Runs a command repeatedly and shows time statistics.
 Usage: avgtime [OPTIONS] <command> [<arguments>]
@@ -95,9 +167,7 @@ Usage: avgtime [OPTIONS] <command> [<arguments>]
                          run outlier.
 
 Examples: 
-
-    avgtime -q -r30      ls -lR
-    avgtime -h -q -r100  ls *
+` ~ examples ~ `
 
 Notes:
 
@@ -111,31 +181,103 @@ Notes:
       This assumes a 'normal distribution', and for the assumption 
       to work, N must be at least 30. The more repetitions, the better.
 
-    * There is a small irreductible overhead in the order of 1 or 2 ms
-      depending on your computer, inherent to forking and process loading.`
+    * There is a small irreductible overhead in the order of 1ms to 10ms,
+      depending on your computer and OS, inherent to forking and 
+      process loading.`
 );
 }
 
 TickDuration run(string prog, string[] progArgs, bool quiet) {
-    TickDuration start = TickDuration.currSystemTick();
+    TickDuration start;
+    TickDuration end;
 
-    //Using fork() and execvp(). system() and shell() would 
-    //invoke '/bin/sh' first which wouldn't be so direct.
-    pid_t pid = fork();
-    if (pid == 0) {
+    version(Posix) 
+    {
+        start = TickDuration.currSystemTick();
+
+        //Using fork() and execvp(). system() and shell() would 
+        //invoke '/bin/sh' first which wouldn't be so direct.
+        pid_t pid = fork();
+        if (pid == 0) {
+            if (quiet) {
+                freopen("/dev/null", "w", stdout.getFP());
+                freopen("/dev/null", "w", stderr.getFP());
+            }
+
+            //Run the program:
+            auto ret = std.process.execvp(prog, progArgs);
+            if (ret == -1) {
+                stderr.writeln("Error: command '" ~ prog  ~ "' not found.");
+                _exit(1);
+            }
+
+            _exit(0);
+        }
+        int status;
+        waitpid(pid, &status, 0);
+        end = TickDuration.currSystemTick();
+    }
+    else version(none) 
+    {
+        progArgs = progArgs[1..$];
+        string cmdLine = prog ~ " " ~ join(progArgs, " ");
+        start = TickDuration.currSystemTick();
+        //The system() function works, but it first invokes a shell:
+        system(cmdLine);
+        end = TickDuration.currSystemTick();
+    } 
+    else version(Windows) 
+    {
+        progArgs = progArgs[1..$];
+        string cmdLine = prog ~ " " ~ join(progArgs, " ");
+        
+        PROCESS_INFORMATION processInfo;
+        STARTUPINFOA startupInfo;
+        startupInfo.cb = startupInfo.sizeof;
+
+        HANDLE handleNull;
+        LPSECURITY_ATTRIBUTES saProcess = null;
         if (quiet) {
-            freopen("/dev/null", "w", stdout.getFP());
-            freopen("/dev/null", "w", stderr.getFP());
+            startupInfo.dwFlags = STARTF_USESTDHANDLES;
+
+            SECURITY_ATTRIBUTES sa;
+            sa.nLength = SECURITY_ATTRIBUTES.sizeof;
+            sa.bInheritHandle = true;
+            saProcess = &sa;
+
+            //Open windows "NUL" file:
+            handleNull = CreateFileA("NUL", GENERIC_READ | GENERIC_WRITE, 
+                    FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, OPEN_EXISTING, 0,
+                    null);
+
+            //Set "NUL" as stdout and stderr of the new process:
+            startupInfo.hStdInput = INVALID_HANDLE_VALUE;
+            startupInfo.hStdOutput = handleNull;
+            startupInfo.hStdError = handleNull;
         }
 
-        std.process.execvp(prog, progArgs);
+        //Run the program
+        start = TickDuration.currSystemTick();
+        auto result = CreateProcessA(null, cast(char*)toStringz(cmdLine),
+            saProcess, saProcess, quiet, 0, null, null, 
+            &startupInfo, &processInfo);
 
-        _exit(0);
+        if(!result) {
+            stderr.writeln("Error: command '" ~ prog  ~ "' not found.");
+            return TickDuration(0);
+        }
+
+        //Wait until it finishes
+        WaitForSingleObject(processInfo.hProcess, INFINITE);
+
+        end = TickDuration.currSystemTick();
+
+        CloseHandle(processInfo.hProcess);
+        CloseHandle(processInfo.hThread);
+        if (quiet) {
+            CloseHandle(handleNull);
+        }
     }
-    int status;
-    waitpid(pid, &status, 0);
-
-    TickDuration end = TickDuration.currSystemTick();
     return end - start;
 }
 
@@ -231,10 +373,14 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     writeln("Std dev.       : ", stdDevFast / 1000.0);
     writeln("Minimum        : ", min / 1000.0);
     writeln("Maximum        : ", max / 1000.0);
-    writeln("95% conf.int.  : [", (avg - error95) / 1000.0, ", ", (avg + error95) / 1000.0, "]  e = ", error95 / 1000.0);
-    writeln("99% conf.int.  : [", (avg - error99) / 1000.0, ", ", (avg + error99) / 1000.0, "]  e = ", error99 / 1000.0);
-    writeln("EstimatedAvg95%: [", (avg - muError95) / 1000.0, ", ", (avg + muError95) / 1000.0, "]  e = ", muError95 / 1000.0);
-    writeln("EstimatedAvg99%: [", (avg - muError99) / 1000.0, ", ", (avg + muError99) / 1000.0, "]  e = ", muError99 / 1000.0);
+    writeln("95% conf.int.  : [", (avg - error95) / 1000.0, ", ", 
+        (avg + error95) / 1000.0, "]  e = ", error95 / 1000.0);
+    writeln("99% conf.int.  : [", (avg - error99) / 1000.0, ", ", 
+        (avg + error99) / 1000.0, "]  e = ", error99 / 1000.0);
+    writeln("EstimatedAvg95%: [", (avg - muError95) / 1000.0, ", ", 
+        (avg + muError95) / 1000.0, "]  e = ", muError95 / 1000.0);
+    writeln("EstimatedAvg99%: [", (avg - muError99) / 1000.0, ", ", 
+        (avg + muError99) / 1000.0, "]  e = ", muError99 / 1000.0);
 
 
     //Print histogram:
