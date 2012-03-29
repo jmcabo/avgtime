@@ -367,7 +367,7 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     writeln("\n------------------------");
     writeln("Total time (ms): ", sum / 1000.0);
     writeln("Repetitions    : ", N);
-    writeln("Sample mode    : ", mode, " (", maxFreq, " ocurrences)");
+    writeln("Sample mode    : ", mode, " (", maxFreq, " occurrences)");
     writeln("Median time    : ", median / 1000.0);
     writeln("Avg time       : ", avg / 1000.0);
     writeln("Std dev.       : ", stdDevFast / 1000.0);
