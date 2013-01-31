@@ -1,4 +1,4 @@
-/** avgtime - Runs a command with an optional repetition and shows 
+/** avgtime - Runs a command with an optional repetition and shows
  *  statistics of the time it took.
  *
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
@@ -70,9 +70,9 @@ version(Posix) {
         alias PROCESS_INFORMATION* PPROCESS_INFORMATION;
         alias PROCESS_INFORMATION* LPPROCESS_INFORMATION;
 
-        export BOOL CreateProcessA(LPCSTR lpApplicationName, 
+        export BOOL CreateProcessA(LPCSTR lpApplicationName,
             LPSTR lpCommandLine,
-            LPSECURITY_ATTRIBUTES lpProcessAttributes, 
+            LPSECURITY_ATTRIBUTES lpProcessAttributes,
             LPSECURITY_ATTRIBUTES lpThreadAttributes,
             BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment,
             LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo,
@@ -162,11 +162,11 @@ Usage: avgtime [OPTIONS] <command> [<arguments>]
   -h, --printhistogram   Print a nice histogram, grouping times by
                          most significant digits.
   -p, --printtimes       Print all measurements in milliseconds
-  -d, --discardfirst     Performs an extra repetition, and then discards 
-                         it. It's like a warmup to prevent first 
+  -d, --discardfirst     Performs an extra repetition, and then discards
+                         it. It's like a warmup to prevent first
                          run outlier.
 
-Examples: 
+Examples:
 ` ~ examples ~ `
 
 Notes:
@@ -175,14 +175,14 @@ Notes:
 
     * The 'median' is the timing in the middle of the sorted list of timings.
 
-    * If the 95% confidence interval's of the timings of two programs 
-      don't overlap, then you can be confident that one is faster 
+    * If the 95% confidence interval's of the timings of two programs
+      don't overlap, then you can be confident that one is faster
       than the other.
-      This assumes a 'normal distribution', and for the assumption 
+      This assumes a 'normal distribution', and for the assumption
       to work, N must be at least 30. The more repetitions, the better.
 
     * There is a small irreductible overhead in the order of 1ms to 10ms,
-      depending on your computer and OS, inherent to forking and 
+      depending on your computer and OS, inherent to forking and
       process loading.`
 );
 }
@@ -191,11 +191,11 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
     TickDuration start;
     TickDuration end;
 
-    version(Posix) 
+    version(Posix)
     {
         start = TickDuration.currSystemTick();
 
-        //Using fork() and execvp(). system() and shell() would 
+        //Using fork() and execvp(). system() and shell() would
         //invoke '/bin/sh' first which wouldn't be so direct.
         pid_t pid = fork();
         if (pid == 0) {
@@ -217,7 +217,7 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
         waitpid(pid, &status, 0);
         end = TickDuration.currSystemTick();
     }
-    else version(none) 
+    else version(none)
     {
         progArgs = progArgs[1..$];
         string cmdLine = prog ~ " " ~ join(progArgs, " ");
@@ -225,12 +225,12 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
         //The system() function works, but it first invokes a shell:
         system(cmdLine);
         end = TickDuration.currSystemTick();
-    } 
-    else version(Windows) 
+    }
+    else version(Windows)
     {
         progArgs = progArgs[1..$];
         string cmdLine = prog ~ " " ~ join(progArgs, " ");
-        
+
         PROCESS_INFORMATION processInfo;
         STARTUPINFOA startupInfo;
         startupInfo.cb = startupInfo.sizeof;
@@ -246,7 +246,7 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
             saProcess = &sa;
 
             //Open windows "NUL" file:
-            handleNull = CreateFileA("NUL", GENERIC_READ | GENERIC_WRITE, 
+            handleNull = CreateFileA("NUL", GENERIC_READ | GENERIC_WRITE,
                     FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, OPEN_EXISTING, 0,
                     null);
 
@@ -259,7 +259,7 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
         //Run the program
         start = TickDuration.currSystemTick();
         auto result = CreateProcessA(null, cast(char*)toStringz(cmdLine),
-            saProcess, saProcess, quiet, 0, null, null, 
+            saProcess, saProcess, quiet, 0, null, null,
             &startupInfo, &processInfo);
 
         if(!result) {
@@ -324,9 +324,9 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     }
 
 
-    //To build a histogram and get the mode, we need to group 
-    //many values into a few bins. So we'll zero out the least 
-    //significant digits. Spliting into X subintervals isn't as 
+    //To build a histogram and get the mode, we need to group
+    //many values into a few bins. So we'll zero out the least
+    //significant digits. Spliting into X subintervals isn't as
     //nice as this.
     int roundingQuotient;
     if (min > 100_000) {
@@ -373,19 +373,19 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     writeln("Std dev.       : ", stdDevFast / 1000.0);
     writeln("Minimum        : ", min / 1000.0);
     writeln("Maximum        : ", max / 1000.0);
-    writeln("95% conf.int.  : [", (avg - error95) / 1000.0, ", ", 
+    writeln("95% conf.int.  : [", (avg - error95) / 1000.0, ", ",
         (avg + error95) / 1000.0, "]  e = ", error95 / 1000.0);
-    writeln("99% conf.int.  : [", (avg - error99) / 1000.0, ", ", 
+    writeln("99% conf.int.  : [", (avg - error99) / 1000.0, ", ",
         (avg + error99) / 1000.0, "]  e = ", error99 / 1000.0);
-    writeln("EstimatedAvg95%: [", (avg - muError95) / 1000.0, ", ", 
+    writeln("EstimatedAvg95%: [", (avg - muError95) / 1000.0, ", ",
         (avg + muError95) / 1000.0, "]  e = ", muError95 / 1000.0);
-    writeln("EstimatedAvg99%: [", (avg - muError99) / 1000.0, ", ", 
+    writeln("EstimatedAvg99%: [", (avg - muError99) / 1000.0, ", ",
         (avg + muError99) / 1000.0, "]  e = ", muError99 / 1000.0);
 
 
     //Print histogram:
     if (printHistogram) {
-        //Normalize histogram. 
+        //Normalize histogram.
         //maxFreq is 100% (1.0), everything else is proportional.
         float[int] histogram;
         foreach (k,v; frequencies) {
@@ -410,17 +410,17 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
 
             //Bar proportional to the frequency:
             immutable LONGEST_BAR_CHARS = 40;
-            string bars = replicate("#", 
+            string bars = replicate("#",
                     cast(size_t)(histogram[roundedTime] * LONGEST_BAR_CHARS));
 
-            writefln("    %s: %5.d  %s", msecsStr, 
+            writefln("    %s: %5.d  %s", msecsStr,
                     frequencies[roundedTime], bars);
         }
     }
 
     //Print all measurements, sorted:
     if (printTimes) {
-        string allTimes = format(array(map!("a / 1000.0")(durationsUsecs)));
+        string allTimes = format("%s", array(map!("a / 1000.0")(durationsUsecs)));
         allTimes = wrap(replace(allTimes, ",", ", "), 80, "", "    ");
 
         string breakLineIfWrapped = (allTimes.indexOf('\n'))? "\n    " : "";
