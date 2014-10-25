@@ -1,0 +1,9 @@
+{
+    "name": "avgtime",
+    "description": "Like unix 'time' command, but with repetitions, median, std deviation.",
+    "copyright": "Copyright © 2012 -, Juan Manuel",
+    "authors": ["Juan Manuel"],
+    "license": "BSL-1.0",
+    "mainSourceFile": "avgtime.d",
+    "targetType": "executable",
+}
