@@ -1,3 +1,7 @@
 avgtime
-*.o
 *.swp
+.dub
+docs.json
+__dummy.html
+*.o
+*.obj
