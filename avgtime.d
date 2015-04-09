@@ -16,7 +16,8 @@
 module avgtime;
 
 import std.stdio, std.process, std.getopt, core.time, std.string, std.conv;
-import std.algorithm: sort, replace, map, max;
+import std.algorithm: sort, map, max;
+import std.string: replace;
 import std.array: array, replicate;
 import std.math: sqrt, log10;
 
