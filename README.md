@@ -4,13 +4,14 @@ avgtime
 Works like the linux `time` command, except it accepts a -r argument to
 specify repetitions and shows stats.
 
-It works for both Windows and Linux.
+It works for Windows, Linux and OS X.
 
 If repetitions are specified, then stats are computed and shown, like
 median, average, and standard deviation.
 
 Pass `-q` to make the program under test silent (stdout and stderr 
-piped to /dev/null).
+piped to /dev/null). The console output sometimes slows down programs,
+so it might be desirable to suppress their output with `-q`.
 
 Pass `-d` to discard the first run. If -d is passed, there is one extra
 repetition which is discarded.
@@ -50,7 +51,7 @@ Displayed times are in milliseconds.
 
 Run avgtime without arguments to see more usage help.
 
-Don't forget to checkout the *nice histogram*.
+Don't forget to check out the *nice histogram*.
 
 *Note* that the following histogram shows two peaks because
 of the CPU speed switching that laptops do. Some laptops
@@ -120,7 +121,7 @@ Compile with:
         dmd avgtime.d
 
 and that's it. You can use `./avgtime` now. Copy it to /usr/local/bin
-to have it in your path.
+to have it in your path (or C:\Windows\ for Windows).
 
 
 Why do I need the stats?
