@@ -3,7 +3,7 @@
  *
  * License:   <a href="http://www.boost.org/LICENSE_1_0.txt">Boost License 1.0</a>.
  * Authors:   Juan Manuel Cabo
- * Version:   0.5
+ * Version:   0.6
  * Source:    avgtime.d
  * Last update: 2015-04-30
  */
@@ -18,7 +18,20 @@ module avgtime;
 import std.stdio, std.process, std.getopt, core.time, std.string, std.conv;
 import std.algorithm, std.array, std.math;
 
-version(Posix) {
+
+//Uncomment to use spanProcess() instead of fork() and CreateProcess().
+//
+//The SpawnProcess version is cleaner and portable across Linux, OSX and
+//Windows, but it has some slight overhead which is measurable (sadly). 
+//The other versions are faster and cover the three OSs.
+//  The slight overhead can be measured when running quick programs (like "void main() { }")
+//it might be so small that it can be ignored it if the measured program takes long to run,
+//but I cannot leave SpawnProcess as default.
+//
+// version = SpawnProcess;
+
+version(SpawnProcess) {
+} else version(Posix) {
     import core.sys.posix.unistd;
     import core.sys.posix.sys.wait;
 } else version(Windows) {
@@ -189,7 +202,42 @@ TickDuration run(string prog, string[] progArgs, bool quiet) {
     TickDuration start;
     TickDuration end;
 
-    version(Posix)
+    //The SpawnProcess version is cleaner and portable across Linux, OSX and
+    //Windows, but it has some slight overhead which is measurable (sadly). 
+    //The other versions are faster and cover the three OSs.
+    version(SpawnProcess) 
+    {
+        string[] progAndArgs = [prog] ~ progArgs[1..$];
+
+        File stdoutRedir = std.stdio.stdout;
+        File stderrRedir = std.stdio.stderr;
+        if (quiet) {
+            version(Windows) {
+                File nullOutput = File("NUL", "w");
+            } else {
+                File nullOutput = File("/dev/null", "w");
+            }
+            stdoutRedir = nullOutput;
+            stderrRedir = nullOutput;
+        }
+
+        try {
+            start = TickDuration.currSystemTick();
+
+            //Run the program:
+            auto pid = spawnProcess(progAndArgs, std.stdio.stdin, stdoutRedir, stderrRedir);
+
+            //Wait for it to finish:
+            wait(pid);
+
+            end = TickDuration.currSystemTick();
+
+        } catch (std.process.ProcessException ex) {
+            end = TickDuration.currSystemTick();
+            stderr.writeln("Error: command '" ~ prog  ~ "' not found.");
+        }
+    } 
+    else version(Posix)
     {
         start = TickDuration.currSystemTick();
 
@@ -365,7 +413,7 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     writeln("\n------------------------");
     writeln("Total time (ms): ", sum / 1000.0);
     writeln("Repetitions    : ", N);
-    writeln("Sample mode    : ", mode, " (", maxFreq, " ocurrences)");
+    writeln("Sample mode    : ", mode, " (", maxFreq, " occurrences)");
     writeln("Median time    : ", median / 1000.0);
     writeln("Avg time       : ", avg / 1000.0);
     writeln("Std dev.       : ", stdDevFast / 1000.0);
