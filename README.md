@@ -4,6 +4,8 @@ avgtime
 Works like the linux `time` command, except it accepts a -r argument to
 specify repetitions and shows stats.
 
+It works for both Windows and Linux.
+
 If repetitions are specified, then stats are computed and shown, like
 median, average, and standard deviation.
 
