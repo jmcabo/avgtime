@@ -387,12 +387,12 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     }
 
     //Build frequencies and find sample mode at the same time:
-    int[int] frequencies;
+    ulong[ulong] frequencies;
     real mode;
-    int maxFreq = 0;
+    ulong maxFreq = 0;
     foreach (real usecs; durationsUsecs) {
-        int roundedTime = cast(int)(usecs / roundingQuotient);
-        int freq = frequencies.get(roundedTime, 0);
+        ulong roundedTime = cast(ulong)(usecs / roundingQuotient);
+        ulong freq = frequencies.get(roundedTime, 0);
         ++freq;
         frequencies[roundedTime] = freq;
         //Get the biggest of the modes, if there is more than one:
@@ -433,13 +433,13 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
     if (printHistogram) {
         //Normalize histogram.
         //maxFreq is 100% (1.0), everything else is proportional.
-        float[int] histogram;
+        float[ulong] histogram;
         foreach (k,v; frequencies) {
             histogram[k] = v / cast(float)maxFreq;
         }
 
         //Sort the bins to print them in order:
-        int[] histogramKeys = array(frequencies.keys());
+        ulong[] histogramKeys = array(frequencies.keys());
         sort(histogramKeys);
 
         //Fix the number of digits to print after the decimal point:
@@ -449,7 +449,7 @@ void showStats(TickDuration[] durations, bool printTimes, bool printHistogram) {
 
         writeln("Histogram      :");
         writeln("    msecs: count  normalized bar");
-        foreach(int roundedTime; histogramKeys) {
+        foreach(ulong roundedTime; histogramKeys) {
             //"Un-round" to get the milliseconds:
             real msecs = roundedTime * roundingQuotient / 1000.0;
             string msecsStr = format(timeFormatStr, msecs);
